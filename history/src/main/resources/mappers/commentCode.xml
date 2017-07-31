@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.commentCode">
+
+<!--댓글쓰기  -->
+<insert id="hi_insert"  parameterType="com.hifive.history.model.CommentDto">
+INSERT
+INTO COMMENT_H
+  (
+    SEQ,
+    POST_SEQ,
+    ID,
+    NAME,
+    CONTENT,
+    PARENT,
+    STATE
+  )
+  VALUES
+  (
+    SEQ_COMMENT.nextval,
+    #{post_seq},
+    #{id},
+    #{name},
+    #{content},
+    SEQ_COMMENT.currval,
+    #{state}
+  ) 
+</insert>
+
+<!--대댓글쓰기  -->
+<insert id="hi_insertRe"  parameterType="com.hifive.history.model.CommentDto">
+INSERT
+INTO COMMENT_H
+  (
+    SEQ,
+    POST_SEQ,
+    ID,
+    NAME,
+    CONTENT,
+    PARENT,
+    STATE
+  )
+  VALUES
+  (
+    SEQ_COMMENT.nextval,
+    #{post_seq},
+    #{id},
+    #{name},
+    #{content},
+    #{parent},
+    #{state}
+  ) 
+</insert>
+
+<!--댓글수정  -->
+<update id="hi_update" parameterType="com.hifive.history.model.CommentDto">
+  UPDATE COMMENT_H
+  SET   CONTENT = #{content},
+        STATE   = #{state}
+  WHERE SEQ     = #{seq}
+</update>
+
+<!-- 페이징 -->
+<select id="hi_selectList" parameterType="hashmap" resultType="hashmap">
+SELECT TT1.*                                           
+FROM                                                   
+  (SELECT ROWNUM RNUM,                                 
+         T1.*,                                 
+         T2.*                                  
+  FROM                                                 
+  ( SELECT A.SEQ,
+      A.POST_SEQ, 
+      A.ID, 
+      A.NAME, 
+      A.CONTENT, 
+      A.PARENT, 
+      A.STATE, 
+      TO_CHAR(A.WDATE, 'YYYY-MM-DD HH24:MI') WDATE,
+      B.PF_IMAGE
+  FROM COMMENT_H A
+  INNER JOIN USER_H B
+  ON A.ID = B.ID
+  WHERE POST_SEQ = #{POST_SEQ}                      
+       order by PARENT, SEQ                         
+    )T1 NATURAL JOIN                                   
+    (                                                  
+      SELECT COUNT(*) as TOT_CNT
+      FROM COMMENT_H                        
+      WHERE POST_SEQ = #{POST_SEQ}                           
+    )T2                                                
+  )TT1                                                 
+WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1) AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+</select>
+
+
+<!-- 댓글삭제 -->
+<update id="hi_delete" parameterType="int">
+UPDATE COMMENT_H
+SET   STATE   = '2'
+WHERE SEQ     = #{SEQ}
+</update>
+
+
+
+</mapper>

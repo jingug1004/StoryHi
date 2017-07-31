@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.blogCode">
+	<update id="hi_update" parameterType="com.hifive.history.model.BlogDto">
+		UPDATE BLOG_H 
+		SET TITLE = #{title}, THEME = #{theme} 
+		WHERE ID = #{id}
+	</update>
+
+	<insert id="hi_insert" parameterType="com.hifive.history.model.BlogDto">
+		INSERT INTO BLOG_H (ID, TITLE)
+		  VALUES (#{id}, #{title})
+	</insert>
+	<select id="getMyBlog" parameterType="String" resultType="com.hifive.history.model.BlogDto">
+		SELECT * 
+		FROM BLOG_H 
+		WHERE ID = #{id}
+	</select>
+</mapper>

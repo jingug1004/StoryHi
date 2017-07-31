@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.visitCode">
+	<insert id="hi_upsert" parameterType="hashmap">
+		MERGE INTO VISIT_H T1
+		USING DUAL
+		ON  (ID = #{id} AND V_ID = #{vid} AND  TO_CHAR(VDATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD') )
+		WHEN MATCHED THEN
+		     UPDATE SET T1.SEX = #{sex}
+		WHEN NOT MATCHED THEN
+		      INSERT (SEQ, ID, V_ID, VDATE, SEX, AREA, BIRTH)
+		      VALUES (SEQ_VISIT.NEXTVAL,  #{id}, #{vid}, SYSDATE, #{sex}, #{area}, TO_DATE(#{birth}, 'YYYY-MM-DD'))
+		
+	</insert>
+	
+	<select id="hi_selectList" parameterType="hashmap" resultType="hashmap">
+	SELECT A.ID, B.TITLE, TO_CHAR(MAX(A.VDATE),'YYYY-MM-DD') AS VDATE
+		FROM VISIT_H A JOIN BLOG_H B
+       	 	ON A.ID = B.ID
+			WHERE V_ID = #{id} 
+        	GROUP BY A.ID, B.TITLE
+        	ORDER BY VDATE DESC 	
+	</select>
+	
+	
+	
+	<select id="hi_getToday" parameterType="String" resultType="int">
+		SELECT COUNT(*) AS TOTAL_CNT
+	 	 FROM(
+	  			SELECT SEQ, ID, V_ID, VDATE, SEX, AREA, BIRTH 
+	 			FROM VISIT_H 
+	  			WHERE V_ID = #{id} 
+	  			AND TO_CHAR(VDATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD')
+	 	) 
+	</select>
+	<select id="hi_getTotal" parameterType="String" resultType="int">
+		SELECT COUNT(*) AS TOTAL_CNT
+		 FROM(
+				SELECT SEQ, ID, V_ID, VDATE, SEX, AREA, BIRTH 
+				FROM VISIT_H 
+				WHERE V_ID = #{id}
+		)
+	</select>
+	<select id="hi_getTodayVisit" parameterType="hashmap" resultType="hashmap">
+	<![CDATA[
+	SELECT A.CUR_DATE AS CUR_DATE, NVL(A.CNT+B.CNT,0) AS CNT 
+	FROM
+	  (
+	  SELECT TO_CHAR((TO_DATE(#{enddate}, 'YYYY-MM-DD')-LEVEL), 'YYYY-MM-DD') AS CUR_DATE,
+	  0 AS CNT 
+	  FROM DUAL
+	  CONNECT BY LEVEL <=7
+	  ) A
+	LEFT OUTER JOIN
+	(
+	  SELECT TO_CHAR(VDATE, 'YYYY-MM-DD') AS CUR_DATE,COUNT(*) AS CNT
+	  FROM VISIT_H
+	  WHERE V_ID = #{id}
+	  AND VDATE BETWEEN TO_DATE(#{enddate}, 'YYYY-MM-DD')-7 AND TO_DATE(#{enddate}, 'YYYY-MM-DD')
+	  GROUP BY TO_CHAR(VDATE, 'YYYY-MM-DD')
+	  
+	)B
+	ON A.CUR_DATE = B.CUR_DATE
+	ORDER BY CUR_DATE ASC
+	]]>
+	</select>
+	<select id="hi_getAgeVisit" parameterType="hashmap" resultType="hashmap">
+	<![CDATA[
+	SELECT T1.*, T2.*, T3.*, T4.*, T5.*, T6.*, T7.*, T8.*, T9.*, T10.*, T11.*											
+  	FROM											
+    (SELECT count(*) men10											
+       FROM (SELECT *											
+              FROM VISIT_H											
+              WHERE BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-240)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH > TO_DATE(TO_CHAR(sysdate,'yyyy-mm-dd'),'YYYY-MM-DD')
+              )											
+       WHERE V_ID = #{id}											
+             AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+             AND SEX = '0'											
+    )T1											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) women10											
+        FROM (SELECT *											
+              FROM VISIT_H											
+              WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-240)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(sysdate,'yyyy-mm-dd'),'YYYY-MM-DD')
+              )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '1'											
+    )T2											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) men20											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-360)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-240),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '0'											
+    )T3											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) women20											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-360)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-240),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '1'											
+    )T4											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) men30											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-480)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-360),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '0'											
+    )T5											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) women30											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-480)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-360),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '1'											
+    )T6											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) men40											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-600)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-480),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')										
+            AND SEX = '0'											
+    )T7											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) women40											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-600)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-480),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')										
+            AND SEX = '1'											
+    )T8											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) men50											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-720)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-600),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '0'											
+    )T9											
+    NATURAL JOIN											
+    (											
+      SELECT count(*) women50											
+      FROM (SELECT *											
+            FROM VISIT_H											
+            WHERE BIRTH > TO_DATE(TO_CHAR(add_months(sysdate,-720)-1,'yyyy-mm-dd'),'YYYY-MM-DD') AND BIRTH < TO_DATE(TO_CHAR(add_months(sysdate,-600),'yyyy-mm-dd'),'YYYY-MM-DD')
+            )											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+            AND SEX = '1'											
+    )T10																						
+    NATURAL JOIN											
+    (											
+      SELECT COUNT(*) TOT_CNT											
+      FROM VISIT_H											
+      WHERE V_ID = #{id}											
+            AND VDATE >= TO_DATE(#{startday}, 'YYYY-MM-DD') AND VDATE < TO_DATE(#{endday}, 'YYYY-MM-DD')											
+    )T11											
+	]]>
+	</select>
+	<select id="getExcel" parameterType="String" resultType="map">
+	<![CDATA[
+	SELECT A.CUR_DATE AS CUR_DATE, NVL(A.CNT+B.CNT,0) AS CNT 
+	FROM
+	  (
+	  SELECT TO_CHAR((TO_DATE(TO_CHAR(SYSDATE,'YYYY-MM-DD'), 'YYYY-MM-DD')-LEVEL), 'YYYY-MM-DD') AS CUR_DATE,
+	  0 AS CNT 
+	  FROM DUAL
+	  CONNECT BY LEVEL <=30
+	  ) A
+	LEFT OUTER JOIN
+	(
+	  SELECT TO_CHAR(VDATE, 'YYYY-MM-DD') AS CUR_DATE,COUNT(*) AS CNT
+	  FROM VISIT_H
+	  WHERE V_ID = #{id}
+	  AND VDATE BETWEEN TO_DATE(TO_CHAR(SYSDATE,'YYYY-MM-DD'), 'YYYY-MM-DD')-30 AND TO_DATE(TO_CHAR(SYSDATE,'YYYY-MM-DD'), 'YYYY-MM-DD')
+	  GROUP BY TO_CHAR(VDATE, 'YYYY-MM-DD')
+	  
+	)B
+	ON A.CUR_DATE = B.CUR_DATE
+	ORDER BY CUR_DATE ASC
+	]]>
+	</select>
+</mapper>

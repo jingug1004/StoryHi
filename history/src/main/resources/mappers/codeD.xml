@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.codeD">
+
+	<resultMap id="CodeMap" type="java.util.HashMap">
+		<result javaType="int" column="CD_ID" property="CD_ID" />
+		<result javaType="int" column="CD_D_ID" property="CD_D_ID" />
+		<result javaType="java.lang.String" column="CD_D_NAME" property="CD_D_NAME" />
+		<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+	</resultMap>
+	<select id="hi_selectList" parameterType="hashmap"
+		resultMap="CodeMap">
+		SELECT T2.CD_ID
+			  ,T2.CD_D_ID
+			  ,T2.CD_D_NM
+		FROM CODE_M T1
+		INNER JOIN CODE_D T2
+		ON T1.CD_ID = T2.CD_ID
+		WHERE T1.CD_ID IN
+		<foreach collection="code_list" item="item" index="index"
+			separator="," open="(" close=")">
+			#{item}
+		</foreach>
+		ORDER BY T1.CD_ID,TO_NUMBER(T2.CD_D_ID)
+	</select>
+</mapper>

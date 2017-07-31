@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.boxCode">
+
+<insert id="hi_insertMap"  parameterType="hashmap">
+	<![CDATA[
+		INSERT
+		INTO BOX_H
+		  (
+		    SEQ,
+		    POST_SEQ,
+		    LOCATION,
+		    ORI_NAME,
+		    SAVE_NAME,
+		    FILE_SIZE,
+		    DEL_GB
+		  )
+		  VALUES
+		  (
+		    SEQ_BOX.nextval,
+		    #{BOARD_IDX},
+		    '1',
+		    #{ORIGINAL_FILE_NAME},
+		    #{STORED_FILE_NAME},
+		    #{FILE_SIZE},
+		    '0'
+		  )
+	 ]]> 
+</insert>
+
+<select id="hi_selectList" parameterType="hashmap" resultType="hashmap">
+    <![CDATA[
+        SELECT
+        	SEQ,
+            POST_SEQ,
+            ORI_NAME,
+            ROUND(FILE_SIZE/1024,1) AS FILE_SIZE
+        FROM
+            BOX_H
+        WHERE
+            POST_SEQ = #{IDX, jdbcType=NUMERIC}
+            AND DEL_GB = '0'
+    ]]>
+</select>
+
+<select id="hi_selectFileInfo" parameterType="hashmap" resultType="hashmap">
+    <![CDATA[
+        SELECT
+            SAVE_NAME,
+            ORI_NAME
+        FROM
+            BOX_H
+        WHERE
+            POST_SEQ = #{IDX, jdbcType=NUMERIC}
+    ]]>
+</select>
+
+<update id="hi_deleteFileList" parameterType="hashmap">
+    <![CDATA[
+        UPDATE BOX_H SET
+            DEL_GB = '1'
+        WHERE
+            POST_SEQ = #{IDX, jdbcType=NUMERIC} 
+    ]]>
+</update>
+ 
+<update id="hi_updateFile" parameterType="hashmap">
+    <![CDATA[
+        UPDATE BOX_H SET
+            DEL_GB = '0'
+        WHERE
+            SEQ = #{FILE_IDX, jdbcType=NUMERIC}  
+    ]]>
+</update>
+
+</mapper>

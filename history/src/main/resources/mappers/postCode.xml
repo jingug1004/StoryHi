@@ -1,0 +1,941 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.postCode">
+
+<sql id="categoryCondition1">
+	<choose>
+		<when test="ct_seq != 0 ">
+			AND CT_SEQ = #{ct_seq}
+		</when>
+		<when test="seq != 0 ">
+			AND SEQ = #{seq}
+		</when>
+		<otherwise></otherwise>
+	</choose>
+</sql>
+<sql id="categoryCondition">
+	<choose>
+		<when test="ct_seq != 0 ">
+			AND CT_SEQ = #{ct_seq}
+		</when>
+		<otherwise></otherwise>
+	</choose>
+</sql>
+
+<sql id="searchCondition">
+	<choose>
+		<when test="SEARCH_WORD == '%%' ">
+			WHERE STATE = '0'
+		</when>
+		<otherwise></otherwise>
+	</choose>
+	<choose>
+		<when test="SEARCH_WORD != '%%' ">
+			WHERE STATE = '0'
+            AND (TITLE LIKE  #{SEARCH_WORD, jdbcType=VARCHAR}
+            OR CONTENT LIKE #{SEARCH_WORD, jdbcType=VARCHAR}
+            OR HASHTAG LIKE #{SEARCH_TAG, jdbcType=VARCHAR})
+		</when>
+		<otherwise></otherwise>
+	</choose>
+</sql>
+
+<sql id="hashtagSearchCondition">
+	<choose>
+		<when test="SEARCH_TAG == '%##%' ">
+			WHERE STATE = '0'
+		</when>
+		<otherwise></otherwise>
+	</choose>
+	<choose>
+		<when test="SEARCH_TAG != '%##%' ">
+			WHERE STATE = '0'
+            AND HASHTAG LIKE #{SEARCH_TAG, jdbcType=VARCHAR}
+		</when>
+		<otherwise></otherwise>
+	</choose>
+</sql>
+
+
+<sql id="visitCondition">
+		<choose>
+			<when test="visit_id == 0 ">	<!-- 방문자 비로그인 상태일때-->
+				WHERE STATE = '0'
+			</when>
+			<when test="visit_id == 1 "> <!-- 로그인 상태에 자신일때-->
+				WHERE NOT STATE = '2' 
+			</when>
+			<when test="visit_id == 2 "> <!-- 로그인 상태이며 이웃일때 -->
+				WHERE STATE IN (0, 3) 
+			</when>
+			<otherwise>
+			</otherwise>
+		</choose>
+</sql>
+
+
+
+<!-- 결과 리턴을 MAP으로 할때 스타일 지정해주기 -->  
+<resultMap id = "PostMap" type="java.util.HashMap">
+   <result javaType="java.lang.String" column="CONTENT" property="CONTENT" jdbcType="CLOB" />
+</resultMap>
+
+<resultMap id="BloggerRankMap" type="java.util.HashMap">
+	<result javaType="int" column="RNUM" property="RNUM" />
+	<result javaType="java.lang.String" column="ID" property="ID" />
+	<result javaType="java.lang.String" column="TITLE" property="TITLE" />
+	<result javaType="java.lang.String" column="NAME" property="NAME" />
+	<result javaType="java.lang.String" column="PF_IMAGE" property="PF_IMAGE" />
+	<result javaType="java.lang.String" column="PF_CONTENT" property="PF_CONTENT" />
+	<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+</resultMap>
+
+<resultMap id="FollowerPostMap" type="java.util.HashMap">
+	<result javaType="int" column="RNUM" property="RNUM" />
+	<result javaType="int" column="SEQ" property="SEQ" />
+	<result javaType="int" column="CT_SEQ" property="CT_SEQ" />
+	<result javaType="java.lang.String" column="ID" property="ID" />
+	<result javaType="java.lang.String" column="FIELD" property="FIELD" />
+	<result javaType="java.lang.String" column="TITLE" property="TITLE" />
+	<result javaType="java.lang.String" column="CONTENT" property="CONTENT" jdbcType="CLOB" />
+	<result javaType="java.lang.String" column="WDATE" property="WDATE" />
+	<result javaType="java.lang.String" column="HASHTAG" property="HASHTAG" />
+	<result javaType="java.lang.String" column="STATE" property="STATE" />
+	<result javaType="java.lang.String" column="CO_STATE" property="CO_STATE" />
+	<result javaType="java.lang.String" column="POST_SEQ" property="POST_SEQ" />
+	<result javaType="java.lang.String" column="ORI_NAME" property="ORI_NAME" />
+	<result javaType="java.lang.String" column="SAVE_NAME" property="SAVE_NAME" />
+	<result javaType="java.lang.String" column="BLOG_TITLE" property="BLOG_TITLE" />
+	<result javaType="java.lang.String" column="NAME" property="NAME" />
+	<result javaType="int" column="TOT_CNT" property="TOT_CNT" />
+	<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+</resultMap>
+
+<resultMap id="ThemePostMap" type="java.util.HashMap">
+	<result javaType="int" column="RNUM" property="RNUM" />
+	<result javaType="int" column="SEQ" property="SEQ" />
+	<result javaType="int" column="CT_SEQ" property="CT_SEQ" />
+	<result javaType="java.lang.String" column="ID" property="ID" />
+	<result javaType="java.lang.String" column="FIELD" property="FIELD" />
+	<result javaType="java.lang.String" column="TITLE" property="TITLE" />
+	<result javaType="java.lang.String" column="CONTENT" property="CONTENT" jdbcType="CLOB" />
+	<result javaType="java.lang.String" column="WDATE" property="WDATE" />
+	<result javaType="java.lang.String" column="HASHTAG" property="HASHTAG" />
+	<result javaType="java.lang.String" column="STATE" property="STATE" />
+	<result javaType="java.lang.String" column="CO_STATE" property="CO_STATE" />
+	<result javaType="java.lang.String" column="ORI_NAME" property="ORI_NAME" />
+	<result javaType="java.lang.String" column="SAVE_NAME" property="SAVE_NAME" />
+	<result javaType="java.lang.String" column="BLOG_TITLE" property="BLOG_TITLE" />
+	<result javaType="java.lang.String" column="NAME" property="NAME" />
+	<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+</resultMap>
+
+<resultMap id="SearchPostMap" type="java.util.HashMap">
+	<result javaType="int" column="RNUM" property="RNUM" />
+	<result javaType="int" column="SEQ" property="SEQ" />
+	<result javaType="int" column="CT_SEQ" property="CT_SEQ" />
+	<result javaType="java.lang.String" column="ID" property="ID" />
+	<result javaType="java.lang.String" column="FIELD" property="FIELD" />
+	<result javaType="java.lang.String" column="TITLE" property="TITLE" />
+	<result javaType="java.lang.String" column="CONTENT" property="CONTENT" jdbcType="CLOB" />
+	<result javaType="java.lang.String" column="WDATE" property="WDATE" />
+	<result javaType="java.lang.String" column="HASHTAG" property="HASHTAG" />
+	<result javaType="java.lang.String" column="STATE" property="STATE" />
+	<result javaType="java.lang.String" column="CO_STATE" property="CO_STATE" />
+	<result javaType="java.lang.String" column="POST_SEQ" property="POST_SEQ" />
+	<result javaType="java.lang.String" column="ORI_NAME" property="ORI_NAME" />
+	<result javaType="java.lang.String" column="SAVE_NAME" property="SAVE_NAME" />
+	<result javaType="int" column="TOT_CNT" property="TOT_CNT" />
+	<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+</resultMap>
+
+<select id="hi_isFollower" parameterType="hashmap" resultType="hashmap">
+	SELECT ROWNUM, CASE
+        WHEN
+        #{blogger_id, jdbcType=VARCHAR} IN ( 
+              SELECT followtable.YOU_ID as ID
+            FROM (
+                   SELECT count(MY_ID) as cnt, MY_ID, YOU_ID
+                   FROM FOLLOW_H
+                   WHERE MY_ID = #{visit_id, jdbcType=VARCHAR}
+                   GROUP BY MY_ID, YOU_ID
+                 )followtable
+          WHERE MOD(followtable.cnt, 2) = 1
+          )
+        THEN
+        (
+        '2'
+          )
+        WHEN
+        #{visit_id, jdbcType=VARCHAR} = #{blogger_id, jdbcType=VARCHAR}
+        THEN
+        (
+        '1'
+        )
+        ELSE
+        (
+        '0'
+        )
+        END AS VISIT_ID
+		FROM POST_H
+  		WHERE ROWNUM =1
+</select>
+<!--포스트쓰기  -->
+<insert id="hi_insertMap"  parameterType="hashmap" useGeneratedKeys="true" keyProperty="IDX">
+	 <selectKey keyProperty="IDX" resultType="string" order="BEFORE">
+        SELECT SEQ_POST.NEXTVAL FROM DUAL
+    </selectKey>
+    <![CDATA[
+		INSERT
+		INTO POST_H
+		  (
+		    SEQ,
+		    CT_SEQ,
+		    ID,
+		    FIELD,
+		    TITLE,
+		    CONTENT,
+		    HASHTAG,
+		    STATE,
+		    CO_STATE
+		  )
+		  VALUES
+		  (
+		    #{IDX, jdbcType=VARCHAR},
+		    #{ct_seq, jdbcType=VARCHAR},
+		    #{id, jdbcType=VARCHAR},
+		    #{field, jdbcType=VARCHAR},
+		    #{title, jdbcType=VARCHAR},
+		    #{content, jdbcType=CLOB},
+		    #{hashtag, jdbcType=VARCHAR},
+		    #{state, jdbcType=VARCHAR},
+		    #{co_state, jdbcType=VARCHAR}
+		  )
+	  ]]>
+</insert>
+
+<!--포스트수정  -->
+<update id="hi_updateBoardnFile" parameterType="hashmap">
+	UPDATE POST_H
+	SET   CT_SEQ  = #{ct_seq, jdbcType=VARCHAR},
+	      FIELD   = #{field, jdbcType=VARCHAR},
+	      TITLE   = #{title, jdbcType=VARCHAR},
+	      CONTENT = #{content, jdbcType=VARCHAR},
+	      HASHTAG = #{tag, jdbcType=VARCHAR},
+	      STATE   = #{state, jdbcType=VARCHAR},
+	      CO_STATE= #{co_state, jdbcType=VARCHAR}
+	WHERE SEQ     = #{seq, jdbcType=VARCHAR}
+</update>
+
+<!--최신 포스트 1건 읽기  -->
+<select id="hi_detail" parameterType="com.hifive.history.model.PostDto" resultType="com.hifive.history.model.PostDto">
+	SELECT SEQ,
+	      CT_SEQ,
+	      ID,
+	      FIELD,
+	      TITLE,
+	      CONTENT,
+	      WDATE,
+	      HASHTAG,
+	      STATE,
+	      CO_STATE
+	FROM POST_H
+	WHERE SEQ = 
+	(SELECT MAX(SEQ) MAXSEQ
+	      FROM POST_H P
+	    <include refid="visitCondition"></include> 
+	      AND ID = #{id, jdbcType=VARCHAR}
+		<include refid="categoryCondition1"/>
+	)
+</select>
+
+
+<!-- 일반 데이터 타입에 대해서는 resultType으로 사용하면 기본 데이터형의 값은 출력된다와 LOB은 null로 처리됨 -->
+<!-- 페이징 -->
+<select id="hi_selectList" parameterType="hashmap" resultMap="PostMap">
+	SELECT TT1.*                                           
+	FROM                                                   
+	  (SELECT ROWNUM RNUM,                                 
+	         T1.*,                                 
+	         T2.*                                  
+	  FROM                                                 
+	  ( SELECT SEQ,
+	    CT_SEQ,
+	    ID,
+	    FIELD,
+	    TITLE,
+	    CONTENT,
+	    WDATE,
+	    HASHTAG,
+	    STATE,
+	    CO_STATE,
+	    (SELECT count(*) FROM COMMENT_H
+	     WHERE POST_SEQ=A.SEQ) AS CO_CNT
+	  FROM POST_H A
+	  <include refid="visitCondition"></include> 
+	  AND ID = #{ID}       
+	      <include refid="categoryCondition"/> 
+	        order by SEQ DESC                               
+	    )T1 NATURAL JOIN                                   
+	    (                                                  
+	      SELECT COUNT(*) as TOT_CNT                              
+	      FROM POST_H  
+	      <include refid="visitCondition"></include>                  
+	      AND ID = #{ID}
+	      <include refid="categoryCondition"/>                        
+	    )T2                                                
+	  )TT1                                                 
+	WHERE RNUM BETWEEN (5 * (#{PAGE_NUM}-1)+1) AND (( 5 * (#{PAGE_NUM}-1))+5 )
+</select>
+
+
+<!-- 글삭제 -->
+<update id="hi_delete" parameterType="int">
+UPDATE POST_H
+SET   STATE   = 2
+WHERE SEQ     = #{SEQ}
+</update>
+
+<!-- 베스트 블로거(4명) -->
+<select id="hi_bloggerRankList" parameterType="hashmap" resultMap="BloggerRankMap">
+	<![CDATA[
+	SELECT TT1.*
+	FROM
+	(
+	    SELECT T3.RNUM AS RNUM, T3.ID AS ID, T3.TITLE AS TITLE, T4.NAME AS NAME, T4.PF_IMAGE AS PF_IMAGE, T4.PF_CONTENT
+	    FROM
+	    (
+	      SELECT ROWNUM RNUM, T1.ID AS ID, T2.TITLE
+	      FROM
+	      (
+	        SELECT COUNT(*) TOTAL_CNT, A.ID
+	        FROM POST_H A INNER JOIN LOVE_H B
+	        ON A.SEQ = B.POST_SEQ
+	        GROUP BY A.ID
+	        ORDER BY TOTAL_CNT DESC
+	       )T1 INNER JOIN BLOG_H T2
+	      ON T1.ID = T2.ID
+	    )T3 INNER JOIN USER_H T4
+	    ON T3.ID = T4.ID
+	)TT1
+	WHERE TT1.RNUM <=4
+	]]>
+</select>
+<select id="hi_selectCommentRank" parameterType="String" resultType="hashmap">
+	SELECT T1.POST_SEQ, T1.TOTAL_CNT, 
+			T2.SEQ, T2.CT_SEQ, T2.ID, T2.FIELD, T2.TITLE, T2.CONTENT, 
+			TO_CHAR(T2.WDATE, 'YYYY-MM-DD') WDATE,
+			T2.HASHTAG, T2.STATE, T2.CO_STATE
+	FROM
+	(
+	  SELECT POST_SEQ, COUNT(*) AS TOTAL_CNT
+	  FROM COMMENT_H A
+	  GROUP BY A.POST_SEQ
+	  ORDER BY TOTAL_CNT DESC
+	) T1 
+  	INNER JOIN POST_H T2
+	ON T1.POST_SEQ = T2.SEQ
+	WHERE NOT STATE = '2' AND T2.ID = #{id}
+	ORDER BY TOTAL_CNT DESC
+</select>
+<select id="hi_selectTodayCommentRank" parameterType="hashmap" resultType="hashmap">
+	<![CDATA[
+	SELECT T1.POST_SEQ, T1.TOTAL_CNT, 
+			T2.SEQ, T2.CT_SEQ, T2.ID, T2.FIELD, T2.TITLE, T2.CONTENT, 
+			TO_CHAR(T2.WDATE, 'YYYY-MM-DD') WDATE,
+			T2.HASHTAG, T2.STATE, T2.CO_STATE
+	  FROM
+		(
+		  SELECT POST_SEQ, COUNT(*) AS TOTAL_CNT
+		  FROM COMMENT_H A
+		  WHERE A.WDATE >= TO_DATE(#{startdate}, 'YYYY-MM-DD')
+		  AND A.WDATE <= TO_DATE(#{enddate}, 'YYYY-MM-DD')+1
+		  GROUP BY A.POST_SEQ
+		  ORDER BY TOTAL_CNT DESC
+		) T1 
+	  INNER JOIN POST_H T2
+	  ON T1.POST_SEQ = T2.SEQ
+	WHERE NOT STATE = '2' AND T2.ID = #{id}
+	ORDER BY TOTAL_CNT DESC
+	]]>
+</select>
+<select id="hi_selectLoveRank" parameterType="hashmap" resultType="hashmap">
+	<![CDATA[ 
+	SELECT *
+	FROM
+	(SELECT T1.POST_SEQ, T1.TOTAL_CNT, 
+          T2.SEQ, T2.CT_SEQ, T2.ID, T2.FIELD, T2.TITLE, T2.CONTENT, 
+          TO_CHAR(T2.WDATE, 'YYYY-MM-DD') WDATE,
+          T2.HASHTAG, T2.STATE, T2.CO_STATE
+	FROM
+	  (SELECT POST_SEQ,
+	          COUNT(*) AS TOTAL_CNT
+	  FROM LOVE_H A
+	  WHERE LDATE >= TO_DATE(#{START_DAY}, 'YYYY-MM-DD') AND LDATE < TO_DATE(#{END_DAY}, 'YYYY-MM-DD')+1
+	  GROUP BY A.POST_SEQ
+	  ORDER BY TOTAL_CNT DESC
+	  ) T1
+	INNER JOIN POST_H T2
+	ON T1.POST_SEQ  = T2.SEQ
+	WHERE NOT STATE = '2'
+	      AND ID = #{ID}
+	ORDER BY TOTAL_CNT DESC, WDATE DESC)L1
+	NATURAL JOIN
+	  (SELECT COUNT(*)
+	    FROM LOVE_H A
+	    INNER JOIN POST_H B
+	    ON A.POST_SEQ = B.SEQ
+	    WHERE LDATE >= TO_DATE(#{START_DAY}, 'YYYY-MM-DD') AND LDATE < TO_DATE(#{END_DAY}, 'YYYY-MM-DD')+1
+	          AND NOT B.STATE = '2' AND B.ID = #{ID}
+	  )L2
+]]>
+</select>
+
+<select id="hi_selectFollowerList" parameterType="hashmap" resultMap="FollowerPostMap">
+	<![CDATA[
+SELECT TT2.*
+FROM
+  (SELECT ROWNUM RNUM, T3.*, T4.*, BLOG1.BLOG_TITLE, USER1.NAME
+  FROM
+    (SELECT T1.*, T2.POST_SEQ, T2.LOCATION, T2.ORI_NAME, T2.SAVE_NAME
+    FROM
+      (SELECT B1.SEQ, B1.CT_SEQ, B1.ID, B1.FIELD, B1.TITLE, B1.CONTENT, to_char(B1.WDATE, 'YYYY-MM-DD') AS WDATE, B1.HASHTAG, B1.STATE, B1.CO_STATE
+      FROM POST_H B1
+      WHERE EXISTS (SELECT 1
+                      FROM
+                      (
+                        SELECT YOU_ID, COUNT(*) CNT
+                        FROM FOLLOW_H
+                        WHERE MY_ID=#{ID}
+                        GROUP BY YOU_ID
+                      )A
+                      WHERE B1.ID = A.YOU_ID
+                      AND MOD(A.CNT,2)=1) 
+      AND STATE IN (0,3)
+      AND WDATE >= TO_DATE(TO_CHAR(SYSDATE-7,'YYYY-MM-DD'), 'YYYY-MM-DD')
+      ORDER BY WDATE DESC
+      )T1
+    LEFT OUTER JOIN
+      ( SELECT *
+         FROM BOX_H B
+         WHERE B.LOCATION = 0
+      )T2
+    ON T1.SEQ = T2.POST_SEQ
+    WHERE T2.SEQ = (SELECT MIN(SEQ) 
+    FROM BOX_H 
+    GROUP BY POST_SEQ 
+    HAVING POST_SEQ = T1.SEQ)
+    OR T2.POST_SEQ IS NULL
+    ) T3 
+    INNER JOIN
+       (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG1
+        ON T3.ID = BLOG1.ID
+        INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER1
+       ON T3.ID = USER1.ID
+    NATURAL JOIN
+    (SELECT COUNT(*) TOT_CNT
+    FROM POST_H B1
+    WHERE EXISTS
+      (SELECT 1
+          FROM
+          (
+            SELECT YOU_ID, COUNT(*) CNT
+            FROM FOLLOW_H
+            WHERE MY_ID=#{ID}
+            GROUP BY YOU_ID
+          )A
+          WHERE B1.ID = A.YOU_ID
+          AND MOD(A.CNT,2)=1
+      )
+    AND STATE IN (0,3)
+    )T4
+  )TT2
+	WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)
+	AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+]]>
+</select>
+
+<select id="hi_selectThemeList" parameterType="hashmap" resultMap="ThemePostMap">
+
+SELECT TTT21.*, USER21.NAME
+FROM
+(SELECT TT21.*,  BLOG21.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A11.*, A21.ORI_NAME, A21.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A1
+          WHERE STATE = 0
+          AND A1.FIELD = #{THEME1}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A11
+          LEFT OUTER JOIN
+          ( SELECT B1.SEQ AS BOX_SEQ, B1.ORI_NAME, B1.SAVE_NAME, B1.POST_SEQ
+            FROM BOX_H B1
+            WHERE B1.LOCATION = 0
+          )A21
+        ON A11.SEQ = A21.POST_SEQ
+        WHERE A21.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A11.SEQ)
+        OR A21.POST_SEQ IS NULL) TT21
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG21
+        ON TT21.ID = BLOG21.ID
+       WHERE TT21.RNUM BETWEEN 1 AND 6) TTT21
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER21
+       ON TTT21.ID = USER21.ID
+UNION ALL  
+SELECT TTT22.*, USER22.NAME
+FROM
+(SELECT TT22.*,  BLOG22.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A12.*, A22.ORI_NAME, A22.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A2
+          WHERE STATE = 0
+          AND A2.FIELD = #{THEME2}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A12
+          LEFT OUTER JOIN
+          ( SELECT B2.SEQ AS BOX_SEQ, B2.ORI_NAME, B2.SAVE_NAME, B2.POST_SEQ
+            FROM BOX_H B2
+            WHERE B2.LOCATION = 0
+          )A22
+        ON A12.SEQ = A22.POST_SEQ
+        WHERE A22.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A12.SEQ)
+        OR A22.POST_SEQ IS NULL) TT22
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG22
+        ON TT22.ID = BLOG22.ID
+       WHERE TT22.RNUM BETWEEN 1 AND 6) TTT22
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER22
+       ON TTT22.ID = USER22.ID
+UNION ALL  
+SELECT TTT23.*, USER23.NAME
+FROM
+(SELECT TT23.*,  BLOG23.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A13.*, A23.ORI_NAME, A23.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A3
+          WHERE STATE = 0
+          AND A3.FIELD = #{THEME3}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A13
+          LEFT OUTER JOIN
+          ( SELECT B3.SEQ AS BOX_SEQ, B3.ORI_NAME, B3.SAVE_NAME, B3.POST_SEQ
+            FROM BOX_H B3
+            WHERE B3.LOCATION = 0
+          )A23
+        ON A13.SEQ = A23.POST_SEQ
+        WHERE A23.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A13.SEQ)
+        OR A23.POST_SEQ IS NULL) TT23
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG23
+        ON TT23.ID = BLOG23.ID
+       WHERE TT23.RNUM BETWEEN 1 AND 6) TTT23
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER23
+       ON TTT23.ID = USER23.ID
+UNION ALL  
+SELECT TTT24.*, USER24.NAME
+FROM
+(SELECT TT24.*,  BLOG24.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A14.*, A24.ORI_NAME, A24.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A4
+          WHERE STATE = 0
+          AND A4.FIELD = #{THEME4}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A14
+          LEFT OUTER JOIN
+          ( SELECT B4.SEQ AS BOX_SEQ, B4.ORI_NAME, B4.SAVE_NAME, B4.POST_SEQ
+            FROM BOX_H B4
+            WHERE B4.LOCATION = 0
+          )A24
+        ON A14.SEQ = A24.POST_SEQ
+        WHERE A24.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A14.SEQ)
+        OR A24.POST_SEQ IS NULL) TT24
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG24
+        ON TT24.ID = BLOG24.ID
+       WHERE TT24.RNUM BETWEEN 1 AND 6) TTT24
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER24
+       ON TTT24.ID = USER24.ID              
+UNION ALL  
+SELECT TTT25.*, USER25.NAME
+FROM
+(SELECT TT25.*,  BLOG25.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A15.*, A25.ORI_NAME, A25.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A5
+          WHERE STATE = 0
+          AND A5.FIELD = #{THEME5}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A15
+          LEFT OUTER JOIN
+          ( SELECT B5.SEQ AS BOX_SEQ, B5.ORI_NAME, B5.SAVE_NAME, B5.POST_SEQ
+            FROM BOX_H B5
+            WHERE B5.LOCATION = 0
+          )A25
+        ON A15.SEQ = A25.POST_SEQ
+        WHERE A25.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A15.SEQ)
+        OR A25.POST_SEQ IS NULL) TT25
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG25
+        ON TT25.ID = BLOG25.ID
+       WHERE TT25.RNUM BETWEEN 1 AND 6) TTT25
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER25
+       ON TTT25.ID = USER25.ID  
+UNION ALL  
+SELECT TTT26.*, USER26.NAME
+FROM
+(SELECT TT26.*,  BLOG26.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A16.*, A26.ORI_NAME, A26.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A6
+          WHERE STATE = 0
+          AND A6.FIELD = #{THEME6}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A16
+          LEFT OUTER JOIN
+          ( SELECT B6.SEQ AS BOX_SEQ, B6.ORI_NAME, B6.SAVE_NAME, B6.POST_SEQ
+            FROM BOX_H B6
+            WHERE B6.LOCATION = 0
+          )A26
+        ON A16.SEQ = A26.POST_SEQ
+        WHERE A26.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A16.SEQ)
+        OR A26.POST_SEQ IS NULL) TT26
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG26
+        ON TT26.ID = BLOG26.ID
+       WHERE TT26.RNUM BETWEEN 1 AND 6) TTT26
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER26
+       ON TTT26.ID = USER26.ID
+UNION ALL  
+SELECT TTT27.*, USER27.NAME
+FROM
+(SELECT TT27.*,  BLOG27.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A17.*, A27.ORI_NAME, A27.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A7
+          WHERE STATE = 0
+          AND A7.FIELD = #{THEME7}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A17
+          LEFT OUTER JOIN
+          ( SELECT B7.SEQ AS BOX_SEQ, B7.ORI_NAME, B7.SAVE_NAME, B7.POST_SEQ
+            FROM BOX_H B7
+            WHERE B7.LOCATION = 0
+          )A27
+        ON A17.SEQ = A27.POST_SEQ
+        WHERE A27.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A17.SEQ)
+        OR A27.POST_SEQ IS NULL) TT27
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG27
+        ON TT27.ID = BLOG27.ID
+       WHERE TT27.RNUM BETWEEN 1 AND 6) TTT27
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER27
+       ON TTT27.ID = USER27.ID
+UNION ALL  
+SELECT TTT28.*, USER28.NAME
+FROM
+(SELECT TT28.*,  BLOG28.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A18.*, A28.ORI_NAME, A28.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A8
+          WHERE STATE = 0
+          AND A8.FIELD = #{THEME8}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A18
+          LEFT OUTER JOIN
+          ( SELECT B8.SEQ AS BOX_SEQ, B8.ORI_NAME, B8.SAVE_NAME, B8.POST_SEQ
+            FROM BOX_H B8
+            WHERE B8.LOCATION = 0
+          )A28
+        ON A18.SEQ = A28.POST_SEQ
+        WHERE A28.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A18.SEQ)
+        OR A28.POST_SEQ IS NULL) TT28
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG28
+        ON TT28.ID = BLOG28.ID
+       WHERE TT28.RNUM BETWEEN 1 AND 6) TTT28
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER28
+       ON TTT28.ID = USER28.ID
+UNION ALL  
+SELECT TTT29.*, USER29.NAME
+FROM
+(SELECT TT29.*,  BLOG29.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A19.*, A29.ORI_NAME, A29.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A9
+          WHERE STATE = 0
+          AND A9.FIELD = #{THEME9}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A19
+          LEFT OUTER JOIN
+          ( SELECT B9.SEQ AS BOX_SEQ, B9.ORI_NAME, B9.SAVE_NAME, B9.POST_SEQ
+            FROM BOX_H B9
+            WHERE B9.LOCATION = 0
+          )A29
+        ON A19.SEQ = A29.POST_SEQ
+        WHERE A29.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A19.SEQ)
+        OR A29.POST_SEQ IS NULL) TT29
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG29
+        ON TT29.ID = BLOG29.ID
+       WHERE TT29.RNUM BETWEEN 1 AND 6) TTT29
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER29
+       ON TTT29.ID = USER29.ID
+UNION ALL         
+SELECT TTT210.*, USER210.NAME
+FROM
+(SELECT TT210.*,  BLOG210.BLOG_TITLE 
+    FROM 
+        (SELECT ROWNUM RNUM, A110.*, A210.ORI_NAME, A210.SAVE_NAME
+        FROM
+          (SELECT *
+          FROM POST_H A10
+          WHERE STATE = 0
+          AND A10.FIELD = #{THEME10}
+          ORDER BY WDATE DESC, SEQ DESC
+          )A110
+          LEFT OUTER JOIN
+          ( SELECT B10.SEQ AS BOX_SEQ, B10.ORI_NAME, B10.SAVE_NAME, B10.POST_SEQ
+            FROM BOX_H B10
+            WHERE B10.LOCATION = 0
+          )A210
+        ON A110.SEQ = A210.POST_SEQ
+        WHERE A210.BOX_SEQ = (SELECT MIN(SEQ) 
+                      FROM BOX_H 
+                      GROUP BY POST_SEQ 
+                      HAVING POST_SEQ = A110.SEQ)
+        OR A210.POST_SEQ IS NULL) TT210
+        INNER JOIN
+        (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG210
+        ON TT210.ID = BLOG210.ID
+       WHERE TT210.RNUM BETWEEN 1 AND 6) TTT210
+       INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER210
+       ON TTT210.ID = USER210.ID
+</select>
+<select id="hi_selectSearchList" parameterType="hashmap" resultMap="SearchPostMap">
+SELECT TT2.*
+   FROM(
+     SELECT ROWNUM RNUM,T1.*, T2.*, BLOG1.BLOG_TITLE, USER1.NAME
+       FROM(
+                SELECT A1.*, A2.POST_SEQ, A2.ORI_NAME, A2.SAVE_NAME
+                FROM
+                  (SELECT A.SEQ, A.CT_SEQ, A.ID, A.FIELD, A.TITLE, A.CONTENT, to_char(A.WDATE, 'YYYY-MM-DD') AS WDATE, A.HASHTAG, A.STATE, A.CO_STATE
+                  FROM POST_H A
+                  <include refid="searchCondition"/>
+                  )A1
+                LEFT OUTER JOIN
+                  ( SELECT B.SEQ, B.POST_SEQ, B.ORI_NAME, B.SAVE_NAME
+                    FROM BOX_H B
+                    WHERE B.LOCATION = 0
+                  )A2
+                ON A1.SEQ = A2.POST_SEQ
+                WHERE A2.SEQ = (SELECT MIN(SEQ) 
+                              FROM BOX_H 
+                              GROUP BY POST_SEQ 
+                              HAVING POST_SEQ = A1.SEQ)
+                OR A2.POST_SEQ IS NULL
+                ORDER BY WDATE DESC
+       )T1
+        INNER JOIN
+       (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG1
+        ON T1.ID = BLOG1.ID
+        INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER1
+       ON T1.ID = USER1.ID
+       NATURAL JOIN
+       (
+       SELECT COUNT(*) TOT_CNT
+        FROM POST_H
+            <include refid="searchCondition"/>
+       )T2
+)TT2
+WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)
+	AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+</select>
+
+<select id="hi_hashtagSearchList" parameterType="hashmap" resultMap="SearchPostMap">
+SELECT TT2.*
+   FROM(
+     SELECT ROWNUM RNUM,T1.*, T2.*, BLOG1.BLOG_TITLE, USER1.NAME
+       FROM(
+                SELECT A1.*, A2.POST_SEQ, A2.ORI_NAME, A2.SAVE_NAME
+                FROM
+                  (SELECT A.SEQ, A.CT_SEQ, A.ID, A.FIELD, A.TITLE, A.CONTENT, to_char(A.WDATE, 'YYYY-MM-DD') AS WDATE, A.HASHTAG, A.STATE, A.CO_STATE
+                  FROM POST_H A
+                  <include refid="hashtagSearchCondition"/>
+                  )A1
+                LEFT OUTER JOIN
+                  ( SELECT B.SEQ, B.POST_SEQ, B.ORI_NAME, B.SAVE_NAME
+                    FROM BOX_H B
+                    WHERE B.LOCATION = 0
+                  )A2
+                ON A1.SEQ = A2.POST_SEQ
+                WHERE A2.SEQ = (SELECT MIN(SEQ) 
+                              FROM BOX_H 
+                              GROUP BY POST_SEQ 
+                              HAVING POST_SEQ = A1.SEQ)
+                OR A2.POST_SEQ IS NULL
+                ORDER BY WDATE DESC
+       )T1
+        INNER JOIN
+       (SELECT ID, TITLE AS BLOG_TITLE
+        FROM BLOG_H) BLOG1
+        ON T1.ID = BLOG1.ID
+        INNER JOIN
+       (SELECT ID, NAME
+       FROM USER_H) USER1
+       ON T1.ID = USER1.ID
+       NATURAL JOIN
+       (
+       SELECT COUNT(*) TOT_CNT
+        FROM POST_H
+            <include refid="hashtagSearchCondition"/>
+       )T2
+)TT2
+WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)
+	AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+</select>
+
+<select id="getLovePost" parameterType="map" resultType="map">
+SELECT TT2.*							
+  FROM(
+        SELECT ROWNUM RNUM, T1.*, T2.*
+          FROM
+              (
+               SELECT A.POST_SEQ ,B.ID ,B.TITLE ,TO_CHAR(A.LDATE, 'YYYY-MM-DD') LDATE
+               FROM(
+                     SELECT POST_SEQ, LDATE
+                     FROM LOVE_H
+                     WHERE ID = #{id}
+                     ORDER BY LDATE DESC
+                     )A INNER JOIN POST_H B
+               ON A.POST_SEQ = B.SEQ
+               ORDER BY LDATE DESC
+              )T1
+              NATURAL JOIN 
+              (
+                   SELECT COUNT(*) TOT_CNT
+                   FROM LOVE_H A INNER JOIN POST_H B
+                    ON A.POST_SEQ = B.SEQ
+                  WHERE A.ID = #{id}
+             )T2	
+  )TT2
+	WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)							
+	AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+</select>
+<select id="getHashTag" resultType="map">
+SELECT HASHTAG
+FROM POST_H
+WHERE TO_DATE(WDATE,'YYYY-MM-DD') = TO_DATE(SYSDATE,'YYYY-MM-DD')
+</select>
+
+
+
+
+<update id="hi_updatePostState" parameterType="hashmap">
+	UPDATE POST_H
+	<include refid="cateStCondition"></include> 
+	WHERE CT_SEQ  = #{cateseq, jdbcType=VARCHAR}
+</update>
+
+
+<sql id="cateStCondition">
+	<choose>
+		<when test="catestate == 0 ">	<!-- 공개-->
+			SET	STATE   = '0'
+		</when>
+		<when test="catestate == 1 "> <!-- 비공개-->
+			SET STATE   = '1'
+		</when>
+		<when test="catestate == 2 "> <!-- 삭제 -->
+			SET STATE   = '2'
+		</when>
+		<otherwise>
+		</otherwise>
+	</choose>
+</sql>
+
+</mapper>
+

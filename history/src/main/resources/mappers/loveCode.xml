@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.loveCode">
+<!--글 공감 누르기  -->
+<insert id="hi_insert"  parameterType="com.hifive.history.model.LoveDto">
+INSERT
+INTO LOVE_H
+  (
+    POST_SEQ,
+    ID,
+    SEX,
+    AREA,
+    BIRTH
+  )
+  VALUES
+  (
+    #{post_seq},
+    #{id},
+    #{sex},
+    #{area},
+    TO_DATE(#{birth}, 'YYYY-MM-DD')
+  )
+</insert>
+
+<!-- 공감한 사람 목록 보기(글별) -->
+<select id="hi_selectList" parameterType="hashmap" resultType="hashmap">
+    SELECT POST_SEQ, ID, LDATE, SEX, AREA, BIRTH,
+    (SELECT COUNT(*) FROM LOVE_H WHERE POST_SEQ=#{post_seq}) AS TOT_CNT
+    FROM LOVE_H WHERE POST_SEQ=#{post_seq}
+</select>
+
+<!-- 내가 공감한 글 목록 확인 -->
+<select id="hi_selectListMy" parameterType="hashmap" resultType="hashmap">
+SELECT POST_SEQ, ID, LDATE, SEX, AREA, BIRTH FROM LOVE_H WHERE ID=#{id} 
+</select>
+
+<!-- 내가 공감한 글 확인 -->
+<select id="hi_detail" parameterType="com.hifive.history.model.LoveDto" resultType="com.hifive.history.model.LoveDto">
+SELECT POST_SEQ, ID, LDATE, SEX, AREA, BIRTH FROM LOVE_H WHERE ID=#{id} AND POST_SEQ=#{post_seq}
+</select>
+
+<!--여기 조심 LDATE >= 부분-->
+<!-- 글 공감 높은 순위 (날짜별) -->
+<select id="hi_selectListRank" parameterType="hashmap" resultType="hashmap">
+<![CDATA[ 
+SELECT *
+FROM
+(SELECT *
+FROM
+  (SELECT POST_SEQ,
+          COUNT(*) AS TOTAL_CNT
+  FROM LOVE_H A
+  WHERE LDATE >= TO_DATE(#{start_day}, 'YYYY-MM-DD') AND LDATE < TO_DATE(#{end_day}, 'YYYY-MM-DD')
+  GROUP BY A.POST_SEQ
+  ORDER BY TOTAL_CNT DESC
+  ) T1
+INNER JOIN POST_H T2
+ON T1.POST_SEQ  = T2.SEQ
+WHERE NOT STATE = '2'
+      AND ID = #{id}
+ORDER BY TOTAL_CNT DESC, WDATE DESC)L1
+NATURAL JOIN
+  (SELECT COUNT(*)
+    FROM LOVE_H A
+    INNER JOIN POST_H B
+    ON A.POST_SEQ = B.SEQ
+    WHERE LDATE >= TO_DATE(#{start_day}, 'YYYY-MM-DD') AND LDATE < TO_DATE(#{end_day}, 'YYYY-MM-DD')
+          AND NOT B.STATE = '2' AND B.ID = #{id}
+  )L2
+]]>
+</select>
+
+
+<!-- 글공감취소 -->
+<update id="hi_delete" parameterType="int">
+DELETE
+FROM LOVE_H
+WHERE POST_SEQ = #{seq}
+</update>
+
+
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.searchCode">
+
+<sql id="condition">
+	<choose>
+		<when test="s_id != '-1' ">
+			INSERT
+			INTO SEARCH_H
+			  (
+			    SEQ,
+			    SEARCH_WORD,
+			    S_ID,
+			    SDATE,
+			    SEX,
+			    AREA,
+			    BIRTH
+			  )
+			VALUES
+			(
+				SEQ_SEARCH.NEXTVAL,
+			    #{search_word},
+			    #{s_id},
+			    SYSDATE,
+			    (
+			      select NULL SEX from dual
+			      where not exists (SELECT SEX FROM USER_H WHERE ID=#{s_id})
+			      union
+			      SELECT SEX FROM USER_H WHERE ID=#{s_id}
+			    ),
+			    (
+			      select NULL AREA from dual
+			      where not exists (SELECT AREA FROM USER_H WHERE ID=#{s_id})
+			      union
+			      SELECT AREA FROM USER_H WHERE ID=#{s_id}
+			    ),
+			    (
+			      select NULL BIRTH from dual
+			      where not exists (SELECT BIRTH FROM USER_H WHERE ID=#{s_id})
+			      union
+			      SELECT BIRTH FROM USER_H WHERE ID=#{s_id}
+			    )
+			 )
+		</when>
+		<when test="s_id == '-1' ">
+			INSERT
+				INTO SEARCH_H
+				  (
+				    SEQ,
+				    SEARCH_WORD,
+				    SDATE
+				  )
+				VALUES
+				(
+					SEQ_SEARCH.NEXTVAL,
+				    #{search_word},
+				    SYSDATE
+				)
+		</when>
+		<otherwise></otherwise>
+	</choose>
+</sql>
+
+	
+	<resultMap id="SearchRankMap" type="java.util.HashMap">
+		<result javaType="int" column="RNUM" property="RNUM" />
+		<result javaType="int" column="CNT" property="CNT" />
+		<result javaType="java.lang.String" column="SEARCH_WORD" property="SEARCH_WORD" />
+		<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+	</resultMap>
+	<!-- 등록 -->
+	<insert id="hi_insert" parameterType="com.hifive.history.model.iDto">
+		<include refid="condition"/>
+		
+	</insert>
+	
+	<select id="hi_selectRankList" resultMap="SearchRankMap">
+		SELECT *
+		FROM
+		(
+			SELECT ROWNUM RNUM, A.CNT AS CNT, A.SEARCH_WORD
+			FROM
+  			(
+  				SELECT COUNT(*) AS CNT, SEARCH_WORD 
+  				FROM SEARCH_H
+  				WHERE TO_CHAR(SDATE, 'YYYY/MM/DD')= TO_CHAR(SYSDATE, 'YYYY/MM/DD')
+  				GROUP BY SEARCH_WORD
+  				ORDER BY COUNT(*) DESC
+  			)A
+  		)
+		WHERE RNUM BETWEEN 1 AND 10
+
+	</select>
+	
+	
+
+
+</mapper>

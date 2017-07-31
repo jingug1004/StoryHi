@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.3.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop-4.3.xsd">
+
+	<!-- Root Context: defines shared resources visible to all other web components -->
+	<!-- 스프링이 관리하는 패키지에 org.zerock.persistence 를 추가한다 -->
+	<context:annotation-config />
+	<context:component-scan base-package="com.hifive.history.*">
+	 	<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	<!-- Controller만 추가했는데, context-common.xml에서 @Controller를 제외한 나머지를 등록시켜 주는 역할을 한다.-->
+    <!-- <bean id="loggingAspect" class="com.hifive.history.util.PerformMeasure"  />
+	<aop:config>
+        <aop:aspect id="logAspect" ref="loggingAspect">
+            <aop:pointcut  id="logPointCut"  expression="execution(* com..*Service.*(..))" />
+            <aop:around pointcut-ref="logPointCut" method="logging"/>
+        </aop:aspect>
+    </aop:config> -->
+    
+	<!-- 어노테이션에 기반한 트랜잭션 활성화 -->
+	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+	<!-- JDBC의 연결을 처리하는 기능을 가진 DataSource -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		p:driverClassName="oracle.jdbc.driver.OracleDriver"
+		p:url="jdbc:oracle:thin:@mydb.c5xvgnaaogg7.ap-northeast-2.rds.amazonaws.com:1521:ORCL"
+		p:username="systsystem" p:password="systsystem" p:maxActive="10"
+		p:maxIdle="5" p:maxWait="-1" />
+
+	<!-- SqlSessionFactoryBean 생성 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- mybatis-config.xml 파일이 스프링이 동작할 때 같이 동작하도록 설정한 것. -->
+		<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="mapperLocations" value="classpath:mappers/**/*.xml"></property>
+	</bean>
+
+	<!-- sqlSession 을 SqlSessionTemplate으로 만든다. -->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate"
+		destroy-method="clearCache">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean id="forkAdvice" class="com.hifive.history.util.ForkAdvice" />
+
+	<bean id="passwordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder" />
+
+	<aop:config>
+		<aop:aspect ref="forkAdvice">
+			<aop:around method="fork"
+				pointcut="execution(* org.springframework.mail.javamail.JavaMailSenderImpl.send(..))" />
+		</aop:aspect>
+	</aop:config>
+
+	<!-- 메일보내기 -->
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="smtp.gmail.com" />
+		<property name="port" value="587" />
+		<property name="username" value="sisthifive@gmail.com" />
+		<property name="password" value="sisthifive123" />
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.smtp.auth">true</prop>
+				<prop key="mail.transport.protocol">smtp</prop>
+				<prop key="mail.smtp.starttls.enable">true</prop>
+				<prop key="mail.debug">true</prop>
+				<!-- starttls : http://cloudstick.tistory.com/entry/JavaMail-API-SMTP 
+					debug : log를 보고 싶다면 사용 -->
+			</props>
+		</property>
+	</bean>
+
+</beans>

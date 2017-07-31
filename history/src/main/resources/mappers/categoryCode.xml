@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.categoryCode">
+	<sql id="BaseCondition">
+      <where>
+         <choose>
+            <when test="isAll == 'true' ">
+               ID = #{id} 
+            </when>
+            <when test="isAll == 'false' ">
+               ID = #{id}  AND STATE = '0'
+            </when>
+            <otherwise></otherwise>
+         </choose>
+      </where>
+   </sql>
+
+	<select id="hi_selectCategory" parameterType="map" resultType="com.hifive.history.model.CategoryDto">
+		SELECT SEQ, ID, NAME, STATE 
+		FROM CATEGORY_H 
+		<include refid="BaseCondition"/>
+		ORDER BY SEQ
+	</select>
+	
+	<insert id="hi_insert" parameterType="com.hifive.history.model.iDto">
+		INSERT 
+		INTO CATEGORY_H(SEQ, ID, NAME, STATE)
+		VALUES(SEQ_CATEGORY.NEXTVAL, #{id}, #{name}, #{state})
+	</insert>
+	
+	<update id="updateCategory" parameterType="map">
+		UPDATE CATEGORY_H
+		SET NAME  = #{catename},
+			STATE = #{catestate}
+		WHERE SEQ = #{cateseq}
+	</update>
+	<delete id="hi_delete" parameterType="int">
+		DELETE FROM CATEGORY_H
+		WHERE SEQ = #{cnt}
+	</delete>
+	<!--<select id="getCategoryCount" parameterType="String" resultType="map">-->
+		<!--SELECT SEQ, NVL(TOTAL,0) TOTAL-->
+		 <!--FROM(-->
+		      <!--SELECT * -->
+		      <!--FROM CATEGORY_H-->
+		      <!--WHERE ID = #{id}-->
+		      <!--ORDER BY SEQ-->
+		  <!--)A LEFT OUTER JOIN-->
+		  <!--(-->
+		  <!--SELECT CT_SEQ, COUNT(*) TOTAL-->
+		    <!--FROM POST_H -->
+		   <!--WHERE ID = #{id}-->
+		   <!--GROUP BY CT_SEQ-->
+		   <!--ORDER BY CT_SEQ-->
+		  <!--) B-->
+		  <!--ON A.SEQ = B.CT_SEQ-->
+	<!--</select>-->
+
+	<select id="getCategoryCount" parameterType="hashmap" resultType="map">
+		SELECT SEQ, NVL(TOTAL,0) TOTAL
+		FROM(
+		SELECT *
+		FROM CATEGORY_H
+		<include refid="BaseCondition"/>
+		ORDER BY SEQ
+		)A LEFT OUTER JOIN
+		(
+		SELECT CT_SEQ, COUNT(*) TOTAL
+		FROM POST_H
+		WHERE ID = #{id} AND STATE != '2'
+		GROUP BY CT_SEQ
+		ORDER BY CT_SEQ
+		) B
+		ON A.SEQ = B.CT_SEQ
+	</select>
+	
+	
+	<select id="getCategoryRange" parameterType="int" resultType="String">
+		SELECT STATE
+		FROM CATEGORY_H
+		WHERE SEQ=#{selected}
+	</select>
+
+</mapper>

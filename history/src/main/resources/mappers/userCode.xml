@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.userCode">
+
+	<sql id="BaseCondition">
+		<where>
+			<choose>
+				<when test="SEARCH_CON == 'idcheck' ">
+					ID = #{id}
+				</when>
+				<when test="SEARCH_CON == 'namecheck' ">
+					NAME = #{name}
+				</when>
+				<when test="SEARCH_CON == 'emailcheck' ">
+					EMAIL = #{email}
+				</when>
+				<otherwise></otherwise>
+			</choose>
+		</where>
+	</sql>
+
+	<insert id="hi_insert" parameterType="com.hifive.history.model.UserDto">
+		INSERT INTO USER_H (ID, PASSWORD, BIRTH, SEX, NAME, EMAIL, AREA, PF_IMAGE, PF_CONTENT)
+		VALUES (#{id}, #{password}, TO_DATE(#{birth}, 'YYYY-MM-DD'), #{sex}, #{name}, #{email}, #{area}, #{pf_image}, #{pf_content})
+	</insert>
+
+	<select id="hi_detail" parameterType="com.hifive.history.model.UserDto" resultType="com.hifive.history.model.UserDto">
+		SELECT ID, PASSWORD, TO_CHAR(BIRTH, 'YYYY/MM/DD') as BIRTH, SEX, NAME, EMAIL, AREA, GRADE, PF_IMAGE, PF_CONTENT
+  		FROM USER_H
+		WHERE ID = #{id}
+	</select>
+
+	<select id="hi_usercheck" parameterType="hashmap" resultType="int">
+		SELECT COUNT(*)
+		FROM USER_H
+		<include refid="BaseCondition"></include>
+	</select>
+
+	<update id="hi_update" parameterType="com.hifive.history.model.UserDto">
+		UPDATE USER_H
+		SET PASSWORD = #{password}, NAME = #{name}, BIRTH = TO_DATE(#{birth}, 'YYYY-MM-DD'), AREA = #{area}, EMAIL = #{email}, PF_IMAGE = #{pf_image}, PF_CONTENT = #{pf_content}, GRADE = #{grade}, SEX = #{sex}
+		WHERE ID = #{id}
+	</update>
+
+	<select id="hi_login" parameterType="com.hifive.history.model.UserDto" resultType="com.hifive.history.model.UserDto">
+		SELECT ID, PASSWORD, TO_CHAR(BIRTH, 'YYYY/MM/DD') as BIRTH, SEX, NAME, EMAIL, AREA, GRADE, PF_IMAGE, PF_CONTENT
+		FROM  USER_H
+		WHERE ID = #{id}
+	</select>
+
+	<select id="checkGradeCondition" parameterType="String" resultType="map">
+		SELECT couNt(*) CNT
+		FROM POST_H A INNER JOIN LOVE_H B
+		ON A.SEQ = B.POST_SEQ
+		WHERE A.ID = #{id}
+	</select>
+	<update id="upGrade" parameterType="map">
+		UPDATE USER_H
+		SET GRADE = #{grade}
+		WHERE ID = #{id}
+	</update>
+</mapper>

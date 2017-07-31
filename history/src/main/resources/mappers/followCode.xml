@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.followCode">
+
+	<resultMap id="followMap" type="java.util.HashMap">
+		<result javaType="java.lang.Integer" column="RNUM" property="RNUM"/>
+		<result javaType="java.lang.String" column="ID" property="ID"/>
+		<result javaType="java.lang.String" column="NAME" property="NAME"/>
+		<result javaType="java.lang.String" column="TITLE" property="TITLE"/>
+		<result javaType="java.lang.Integer" column="TOT_CNT" property="TOT_CNT"/>
+		<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+	</resultMap>
+
+	<sql id="BaseCondition">
+		<choose>
+			<when test="SEARCH_CON == 'ifollow' ">
+				<include refid="ifollow"></include>
+			</when>
+			<when test="SEARCH_CON == 'youfollow' ">
+				<include refid="youfollow"></include>
+			</when>
+			<otherwise></otherwise>
+		</choose>
+	</sql>
+
+	<sql id="ifollow">
+        SELECT followtable.YOU_ID as ID, usertable.NAME, blogtable.TITLE
+          FROM (
+                 SELECT count(MY_ID) as cnt, MY_ID, YOU_ID
+                 FROM FOLLOW_H
+                 WHERE MY_ID = #{id}
+                 GROUP BY MY_ID, YOU_ID
+               )followtable
+          INNER JOIN USER_H usertable
+            ON followtable.YOU_ID = usertable.ID
+          INNER JOIN BLOG_H blogtable
+            ON usertable.ID = blogtable.ID
+        WHERE MOD(followtable.cnt, 2) = 1
+        ORDER BY followtable.YOU_ID
+      	)T1
+    	NATURAL JOIN
+    	(
+	      SELECT COUNT(*) TOT_CNT
+	      FROM (
+	            SELECT 1
+	            FROM FOLLOW_H
+	            WHERE MY_ID = #{id}
+	            GROUP BY MY_ID, YOU_ID
+	            )
+	</sql>
+
+	<sql id="youfollow">
+        SELECT followtable.MY_ID as ID, usertable.NAME, blogtable.TITLE
+          FROM (
+                 SELECT count(YOU_ID) as cnt, MY_ID, YOU_ID
+                 FROM FOLLOW_H
+                 WHERE YOU_ID = #{id}
+                 GROUP BY MY_ID, YOU_ID
+               )followtable
+          INNER JOIN USER_H usertable
+            ON followtable.MY_ID = usertable.ID
+          INNER JOIN BLOG_H blogtable
+            ON usertable.ID = blogtable.ID
+        WHERE MOD(followtable.cnt, 2) = 1
+        ORDER BY followtable.MY_ID
+      	)T1
+	    NATURAL JOIN
+	    (
+	      SELECT COUNT(*) TOT_CNT
+	      FROM (
+	      		SELECT 1
+                FROM FOLLOW_H
+                WHERE YOU_ID = #{id}
+                GROUP BY MY_ID, YOU_ID
+	            )
+	</sql>
+
+	<!--페이징-->
+	<sql id="page">
+		SELECT TT2.*
+		FROM(
+		SELECT ROWNUM RNUM, T1.*, T2.TOT_CNT
+		FROM(
+		<include refid="BaseCondition"></include>
+		)T2
+		)TT2
+		WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)
+		AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+		ORDER BY TT2.RNUM DESC
+	</sql>
+
+	<!--페이징 없음-->
+	<sql id="notpage">
+		SELECT ROWNUM RNUM, T1.*, T2.TOT_CNT
+		FROM(
+		<include refid="BaseCondition"></include>
+		)T2
+	</sql>
+
+	<select id="hi_selectList" parameterType="hashmap" resultMap="followMap">
+		<choose>
+			<when test="PAGE == 'page' ">
+				<include refid="page"></include>
+			</when>
+			<when test="PAGE == 'notpage' ">
+				<include refid="notpage"></include>
+			</when>
+			<otherwise></otherwise>
+		</choose>
+	</select>
+
+	<!-- 팔로우 증가, 감소(일간) -->
+	<select id="hi_getFollowList" parameterType="hashmap" resultType="hashmap">
+		<![CDATA[
+		SELECT A.CUR_DATE AS CUR_DATE, NVL(A.CNT+B.CNT,0) AS CNT 									
+		FROM									
+		  (									
+		    SELECT TO_CHAR((TO_DATE(#{enddate}, 'YYYY-MM-DD')-LEVEL), 'YYYY-MM-DD') AS CUR_DATE,
+		    0 AS CNT 									
+		    FROM DUAL									
+		    CONNECT BY LEVEL <=7									
+		  ) A									
+		  LEFT OUTER JOIN									
+		  (									
+		    SELECT TO_CHAR(FDATE, 'YYYY-MM-DD') AS CUR_DATE,COUNT(*) AS CNT									
+		    FROM FOLLOW_H									
+		    WHERE FDATE BETWEEN TO_DATE(#{enddate}, 'YYYY-MM-DD')-7 AND TO_DATE(#{enddate}, 'YYYY-MM-DD')
+		    AND YOU_ID= #{id}
+		    AND STATE=#{state}									
+		    GROUP BY TO_CHAR(FDATE, 'YYYY-MM-DD')  									
+		  )B									
+		  ON A.CUR_DATE = B.CUR_DATE									
+		ORDER BY CUR_DATE ASC
+		]]>
+	</select>
+
+	<select id="hi_getNeighborList" parameterType="hashmap" resultType="hashmap">
+		SELECT TT2.*							
+		FROM(							
+     	 	SELECT ROWNUM RNUM, T1.*, T2.TOT_CNT							
+      		FROM(							
+            	SELECT followtable.MY_ID, usertable.NAME, blogtable.TITLE							
+              	FROM (							
+                     SELECT count(YOU_ID) as cnt, MY_ID, YOU_ID							
+                     FROM FOLLOW_H							
+                     WHERE YOU_ID = #{id}							
+                     GROUP BY MY_ID, YOU_ID							
+                )followtable							
+              	INNER JOIN USER_H usertable							
+                ON followtable.MY_ID = usertable.ID							
+             	INNER JOIN BLOG_H blogtable							
+                ON usertable.ID = blogtable.ID							
+              	WHERE MOD(followtable.cnt, 2) = 1							
+             	ORDER BY followtable.MY_ID
+          	)T1							
+        NATURAL JOIN							
+        (							
+          SELECT COUNT(*) TOT_CNT							
+          FROM (SELECT 1							
+                     FROM FOLLOW_H							
+                     WHERE YOU_ID = #{id}						
+                     GROUP BY MY_ID, YOU_ID)
+        		)T2							
+    	)TT2							
+		WHERE RNUM BETWEEN (#{PAGE_SIZE} * (#{PAGE_NUM}-1)+1)							
+		AND ((#{PAGE_SIZE} * (#{PAGE_NUM}-1))+#{PAGE_SIZE})
+	</select>
+
+	<update id="hi_insert" parameterType="com.hifive.history.model.FollowDto">
+		MERGE INTO FOLLOW_H f1
+		USING DUAL
+		ON (MY_ID = #{my_id} AND YOU_ID = #{you_id} AND TO_CHAR(FDATE, 'YYYY/MM/DD') = TO_CHAR(SYSDATE, 'YYYY/MM/DD'))
+		WHEN MATCHED THEN
+		UPDATE SET f1.STATE = f1.STATE
+		DELETE WHERE MY_ID = #{my_id} AND YOU_ID = #{you_id} AND TO_CHAR(FDATE, 'YYYY/MM/DD') = TO_CHAR(SYSDATE, 'YYYY/MM/DD')
+		WHEN NOT MATCHED THEN
+		INSERT ( f1.SEQ, f1.MY_ID, f1.YOU_ID, f1.FDATE, f1.SEX, f1.AREA, f1.BIRTH, f1.STATE)
+		VALUES ( SEQ_FOLLOW.NEXTVAL, #{my_id}, #{you_id}, SYSDATE, #{sex}, #{area}, TO_DATE(#{birth}, 'YYYY-MM-DD'), #{state} )
+	</update>
+
+	<select id="hi_detail" parameterType="com.hifive.history.model.FollowDto" resultType="com.hifive.history.model.FollowDto">
+		SELECT followtable.MY_ID, followtable.YOU_ID
+		FROM (
+		       SELECT count(YOU_ID) as cnt, MY_ID, YOU_ID
+		       FROM FOLLOW_H
+		       WHERE MY_ID = #{my_id} AND YOU_ID = #{you_id}
+		       GROUP BY MY_ID, YOU_ID
+		     )followtable
+		WHERE MOD(followtable.cnt, 2) = 1
+	</select>
+	<update id="blockFollow" parameterType="map">
+	MERGE INTO FOLLOW_H T1
+	USING ( SELECT 
+	               #{myid} MY_ID,
+	               #{youid} YOU_ID,
+	               SYSDATE FDATE,
+	              ( SELECT SEQ       
+	                FROM FOLLOW_H
+	                WHERE MY_ID = #{myid}
+	                AND YOU_ID  = #{youid}
+	                AND TO_CHAR(FDATE, 'YYYYMMDD') = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	                AND STATE = '0'
+	              ) AS SEQ
+	         FROM DUAL       
+	      ) T2
+	 ON (  T1.YOU_ID=T2.YOU_ID
+	 	AND T1.MY_ID=T2.MY_ID
+	    AND T1.STATE=0
+	    AND TO_CHAR(T1.FDATE, 'YYYYMMDD') = TO_CHAR(T2.FDATE, 'YYYYMMDD'))
+	 WHEN MATCHED THEN
+	    UPDATE SET  T1.AREA = '대구'
+	    DELETE WHERE (T1.SEQ=T2.SEQ)
+	 WHEN NOT MATCHED THEN   
+    INSERT (SEQ, MY_ID, YOU_ID, SEX, AREA, BIRTH, STATE)
+    VALUES (SEQ_FOLLOW.NEXTVAL, #{myid},#{youid}, 0, '서울', SYSDATE, 1)
+	</update>
+</mapper>

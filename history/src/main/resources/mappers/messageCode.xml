@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.messageCode">
+	
+	<resultMap id="GetNotes" type="java.util.HashMap">
+		<!-- result javaType="데이터타입" column="db컬럼명" property="맵에서 키값"/ -->
+		<result javaType="java.lang.Integer"  column="IDX" 			property="IDX" />
+		<result javaType="java.lang.Integer"  column="SEQ" 			property="SEQ" />
+		<result javaType="java.lang.String"   column="SEND_ID" 		property="SEND_ID" />
+		<result javaType="java.lang.String"   column="TAKE_ID" 		property="TAKE_ID" />
+		<result javaType="java.lang.String"   column="CONTENTS"		property="CONTENTS" />
+		<result javaType="java.lang.String"   column="WDATE" 		property="WDATE" />
+		<result javaType="java.lang.String"   column="RDATE" 		property="RDATE" />
+		<result javaType="java.lang.String"   column="STATE" 		property="STATE" />		
+		<result javaType="java.lang.String"   column="NAME" 		property="NAME" />
+		<result javaType="java.lang.Integer"  column="TOTAL" 		property="TOTAL" />
+		<result javaType="java.lang.String"   column="SEND_VIEW"	property="SEND_VIEW" />
+		<result javaType="java.lang.String"   column="TAKE_VIEW"	property="TAKE_VIEW" />
+	</resultMap>
+
+	<!-- 쪽지 쓰기 -->
+	<update id="hi_insert" parameterType="com.hifive.history.model.MessageDto">
+		INSERT INTO MESSAGE_H(SEQ, SEND_ID, TAKE_ID, CONTENTS, RDATE)
+		VALUES(SEQ_MESSAGE.NEXTVAL, #{send_id}, #{take_id}, #{contents}, NULL)
+	</update>
+	
+	<sql id="BaseConditionDetail">
+		<choose>
+			<when test="name == 'bty'">
+				ON (A.SEND_ID=B.ID)
+			</when>
+			<when test="name == 'btn'">
+				ON (A.TAKE_ID=B.ID)
+			</when>
+		</choose>
+	</sql>
+	
+	<!-- 쪽지 읽기 -->
+	<select id="hi_detail" parameterType="int" resultType="com.hifive.history.model.MessageDto">
+		SELECT A.*, B.NAME
+		  FROM (
+				SELECT SEQ, SEND_ID, TAKE_ID, CONTENTS, 
+					   TO_CHAR(WDATE, 'YYYY-MM-DD') WDATE,
+			 		   TO_CHAR(RDATE, 'YYYY-MM-DD') RDATE,
+					   STATE, SEND_VIEW, TAKE_VIEW
+				  FROM MESSAGE_H
+				 WHERE SEQ=#{seq}) A JOIN USER_H B 
+				            <include refid="BaseConditionDetail" />
+	</select>	
+	
+	<sql id="BaseConditionFords">
+		<choose>
+			<when test="bt_yn == 'bty'">
+				SET STATE=1,
+			</when>
+			<when test="bt_yn == 'btn'">
+				SET 
+			</when>
+		</choose>
+	</sql>
+	
+	<!-- 쪽지 읽고 나서 -->
+	<update id="hi_detail_state" parameterType="hashmap">
+		UPDATE MESSAGE_H 
+	  <include refid="BaseConditionFords" />
+		 RDATE = SYSDATE
+		 WHERE SEQ = #{seq}
+	</update>
+	
+	<!-- 읽지 않은 쪽지 수 -->
+	<select id="hi_unread_note" parameterType="String" resultType="String">
+		SELECT COUNT(*)
+		  FROM MESSAGE_H
+		 WHERE TAKE_ID=#{id} 
+		   AND STATE='0'
+	</select>	
+	
+	<!-- 쪽지 삭제 -->
+	<delete id="hi_delete" parameterType="int">
+		DELETE 	
+		  FROM MESSAGE_H			
+		 WHERE SEQ=#{id}	
+	</delete>
+	
+	<sql id="BaseConditionForView">
+		<choose>
+			<when test="dest == 'receive'">
+				SET TAKE_VIEW=-1
+			</when>
+			<when test="dest == 'send'">
+				SET SEND_VIEW=-1
+			</when>
+		</choose>
+	</sql>
+	
+	<!-- 쪽지 VIEW 변경 -->
+	<update id="hi_update_view" parameterType="hashmap">
+		UPDATE MESSAGE_H 
+	  <include refid="BaseConditionForView" />
+		 WHERE SEQ=#{seq}
+	</update>
+	
+	<sql id="BaseConditionForFilter">		
+		<choose>
+			<when test="condi == 'receiver'">
+				WHERE TAKE_ID=#{id}		
+			</when>
+			<when test="condi == 'send'">
+				WHERE SEND_ID=#{id}		
+			</when>
+			<otherwise></otherwise>
+		</choose>		
+	</sql>
+	
+	<!-- 리스트 불러오기(내용 검색) -->
+	<select id="hi_select_filtered" parameterType="hashmap" resultMap="GetNotes">				
+		SELECT T1.*
+		  FROM (
+				SELECT T.IDX, T.SEQ, T.SEND_ID, T.TAKE_ID,   T.CONTENTS, 							
+		          	   TO_CHAR(T.WDATE, 'YYYY-MM-DD') WDATE,							
+		          	   TO_CHAR(T.RDATE, 'YYYY-MM-DD') RDATE,							
+		        	   T.STATE, T.NAME, T.TOTAL,   T.SEND_VIEW, T.TAKE_VIEW						
+		   		  FROM (							
+				     	SELECT ROWNUM IDX,   LST.SEQ,   LST.SEND_ID, LST.TAKE_ID, 							
+				               LST.CONTENTS, LST.WDATE, LST.RDATE,   LST.STATE,
+				               B.NAME, 		 LST.TOTAL,	LST.SEND_VIEW, LST.TAKE_VIEW							
+				     	  FROM (							
+					        	SELECT SEQ, SEND_ID, TAKE_ID, CONTENTS, WDATE, RDATE, STATE,
+					        		   ROWNUM, MAX(ROWNUM) OVER() TOTAL, SEND_VIEW, TAKE_VIEW							
+			       				  FROM MESSAGE_H
+		        	      	  <include refid="BaseConditionForFilter" />
+					        	   AND CONTENTS LIKE '%' || #{words} || '%'						
+					        	 ORDER BY WDATE DESC					
+					           ) LST JOIN USER_H B ON(LST.SEND_ID=B.ID)		
+					     <![CDATA[			                   		
+					 	 WHERE ROWNUM <= (( 10 * (#{PAGE_NUM}-1))+10 )		      							
+					   ) T      							
+				 WHERE T.IDX >= (10 * (#{PAGE_NUM}-1)+1)
+			   ) T1 ]]>
+	  ORDER BY T1.SEQ DESC
+					 
+	</select>
+	
+	<!-- 리스트 불러오기(보낸 쪽지) -->
+	<select id="hi_select_SENDlist" parameterType="String" resultMap="GetNotes">
+		<![CDATA[
+		SELECT T1.*, T2.*
+		  FROM ((
+				SELECT T.IDX, T.SEQ,    T.SEND_ID,   T.TAKE_ID, T.CONTENTS, 							
+					   TO_CHAR(T.WDATE, 'YYYY-MM-DD') WDATE,							
+					   TO_CHAR(T.RDATE, 'YYYY-MM-DD') RDATE,							
+					   T.STATE, T.NAME, T.SEND_VIEW, T.TAKE_VIEW							
+		   		  FROM (							
+				      	SELECT ROWNUM IDX,   LST.SEQ,   	LST.SEND_ID, LST.TAKE_ID, 							
+				               LST.CONTENTS, LST.WDATE,	 	LST.RDATE,   LST.STATE,
+				               B.NAME,		 LST.SEND_VIEW, LST.TAKE_VIEW								
+		     			  FROM (							
+					        	SELECT SEQ, SEND_ID, TAKE_ID, CONTENTS, WDATE, RDATE, 
+					        		   STATE, SEND_VIEW, TAKE_VIEW							
+					       		  FROM MESSAGE_H							
+					        	 WHERE SEND_ID=#{SENDID}	
+					        	   AND SEND_VIEW=0						
+					        	 ORDER BY WDATE DESC				
+		          			   ) LST JOIN USER_H B ON(LST.TAKE_ID=B.ID)			
+		      			 WHERE ROWNUM <= (( 10 * (#{PAGE_NUM}-1))+10 )		      							
+		       			) T      							
+		 		 WHERE T.IDX >= (10 * (#{PAGE_NUM}-1)+1)
+				 ) T1 NATURAL JOIN  
+				 (                                                  
+				  SELECT COUNT(*) TOTAL                                  
+				    FROM MESSAGE_H                        
+				   WHERE SEND_ID=#{SENDID} 
+				     AND SEND_VIEW=0) T2)
+			ORDER BY T1.SEQ DESC	     
+		]]>	
+	</select>
+	
+	<!-- 리스트 불러오기(받은 쪽지) -->
+	<select id="hi_select_GETlist" parameterType="String" resultMap="GetNotes">
+		<![CDATA[
+		SELECT T1.*, T2.*
+		  FROM ((
+				SELECT T.IDX, T.SEQ,    T.SEND_ID,   T.TAKE_ID, T.CONTENTS, 							
+					   TO_CHAR(T.WDATE, 'YYYY-MM-DD') WDATE,							
+					   TO_CHAR(T.RDATE, 'YYYY-MM-DD') RDATE,							
+					   T.STATE, T.NAME, T.SEND_VIEW, T.TAKE_VIEW							
+		   		  FROM (							
+				      	SELECT ROWNUM IDX,   LST.SEQ,   	LST.SEND_ID, LST.TAKE_ID, 							
+				               LST.CONTENTS, LST.WDATE,	 	LST.RDATE,   LST.STATE,
+				               B.NAME,		 LST.SEND_VIEW, LST.TAKE_VIEW								
+		     			  FROM (							
+					        	SELECT SEQ, SEND_ID, TAKE_ID, CONTENTS, WDATE, RDATE, 
+					        		   STATE, SEND_VIEW, TAKE_VIEW							
+					       		  FROM MESSAGE_H							
+					        	 WHERE TAKE_ID=#{TAKEID}	
+					        	   AND TAKE_VIEW=0						
+					        	 ORDER BY SEQ DESC				
+		          			   ) LST JOIN USER_H B ON(LST.SEND_ID=B.ID)			
+		      	 	WHERE ROWNUM <= (( 10 * (#{PAGE_NUM}-1))+10 )		      							
+			       ) T      							
+			 WHERE T.IDX >= (10 * (#{PAGE_NUM}-1)+1)
+			 ) T1 NATURAL JOIN  
+			 (                                                  
+			  SELECT COUNT(*) TOTAL                                  
+			    FROM MESSAGE_H                        
+			   WHERE TAKE_ID=#{TAKEID} 
+			     AND TAKE_VIEW=0) T2 )
+		ORDER BY T1.SEQ DESC
+		]]>	
+	</select>
+		
+</mapper>
+
+

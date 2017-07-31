@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hifive.history.repository.mappers.performCode">
+
+<insert id="hi_insert" parameterType="com.hifive.history.model.PerformDto">
+	INSERT INTO PERFORM_H
+	  (
+	    ID,
+	    CLASS_NM,
+	    METHOD_NM,
+	    P_TIME,
+	    REG_DT,
+	    REG_ID,
+	    ARGU_NM_VALUE
+	  )
+	  VALUES
+	  (
+	    #{ID},
+	    #{CLASS_NM},
+	    #{METHOD_NM},
+	    #{P_TIME},
+	    SYSDATE,
+	    'SYSTEM',
+	    #{ARGU_NM_VALUE, jdbcType=VARCHAR}
+	  )
+</insert>
+
+</mapper>
